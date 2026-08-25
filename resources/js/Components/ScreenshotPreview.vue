@@ -5,11 +5,30 @@ defineProps({
     error: { type: String, default: '' },
 });
 
+const emit = defineEmits(['download']);
+
 const formatFileSize = (bytes) => {
     if (!bytes) return '';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1048576).toFixed(1) + ' MB';
+};
+
+const downloadScreenshot = async (url, filename) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename || 'screenshot.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+        window.open(url, '_blank');
+    }
 };
 </script>
 
@@ -41,7 +60,7 @@ const formatFileSize = (bytes) => {
         <div v-else-if="screenshot" class="space-y-4">
             <div class="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
                 <img
-                    :src="screenshot.download_url"
+                    :src="screenshot.preview_url"
                     :alt="'Screenshot of ' + screenshot.width + 'x' + screenshot.height"
                     class="w-full h-auto"
                 />
@@ -69,16 +88,15 @@ const formatFileSize = (bytes) => {
                     </span>
                 </div>
 
-                <a
-                    :href="screenshot.download_url"
-                    download
+                <button
+                    @click="downloadScreenshot(screenshot.download_url, 'screenshot-' + screenshot.width + 'x' + screenshot.height + '.' + screenshot.format)"
                     class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
                     Download Screenshot
-                </a>
+                </button>
             </div>
         </div>
 
