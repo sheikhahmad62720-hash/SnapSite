@@ -162,9 +162,10 @@ class ScreenshotService
         $script .= "        });\n";
         $script .= "        const page = await context.newPage();\n\n";
         $script .= "        await page.goto('{$urlJs}', {\n";
-        $script .= "            waitUntil: 'networkidle',\n";
-        $script .= "            timeout: 30000\n";
-        $script .= "        });\n\n";
+        $script .= "            waitUntil: 'domcontentloaded',\n";
+        $script .= "            timeout: 20000\n";
+        $script .= "        });\n";
+        $script .= "        await page.waitForTimeout(1000);\n\n";
         $script .= "        await page.screenshot({\n";
         $script .= "            path: '{$filePathJs}',\n";
         $script .= "            fullPage: {$fullPage},\n";
