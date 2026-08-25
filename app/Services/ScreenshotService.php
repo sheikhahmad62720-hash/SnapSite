@@ -37,7 +37,7 @@ class ScreenshotService
         try {
             $nodeScript = $this->buildNodeScript($url, $width, $height, $screenshotType, $format, $filePath);
 
-            $tempScript = $this->tempDir . DIRECTORY_SEPARATOR . Str::uuid() . '.js';
+            $tempScript = $this->tempDir . DIRECTORY_SEPARATOR . Str::uuid() . '.cjs';
             File::put($tempScript, $nodeScript);
 
             $command = escapeshellcmd("node " . $tempScript . " 2>&1");
@@ -146,48 +146,40 @@ class ScreenshotService
     private function buildNodeScript(string $url, int $width, int $height, string $screenshotType, string $format, string $filePath): string
     {
         $fullPage = $screenshotType === 'full' ? 'true' : 'false';
-
         $qualityOption = $format === 'jpeg' ? 'quality: 90,' : '';
-
         $nodeModulesPath = str_replace('\\', '/', base_path('node_modules'));
-
         $filePath = str_replace('\\', '/', $filePath);
-
         $urlJs = str_replace("'", "\\'", $url);
         $filePathJs = str_replace("'", "\\'", $filePath);
 
-        return <<<NODESCRIPT
-const {{ chromium }} = require('{$nodeModulesPath}/playwright');
+        $script = "const { chromium } = require('{$nodeModulesPath}/playwright');\n\n";
+        $script .= "(async () => {\n";
+        $script .= "    let browser;\n";
+        $script .= "    try {\n";
+        $script .= "        browser = await chromium.launch({ headless: true });\n";
+        $script .= "        const context = await browser.newContext({\n";
+        $script .= "            viewport: { width: {$width}, height: {$height} }\n";
+        $script .= "        });\n";
+        $script .= "        const page = await context.newPage();\n\n";
+        $script .= "        await page.goto('{$urlJs}', {\n";
+        $script .= "            waitUntil: 'networkidle',\n";
+        $script .= "            timeout: 30000\n";
+        $script .= "        });\n\n";
+        $script .= "        await page.screenshot({\n";
+        $script .= "            path: '{$filePathJs}',\n";
+        $script .= "            fullPage: {$fullPage},\n";
+        $script .= "            type: '{$format}',\n";
+        $script .= "            {$qualityOption}\n";
+        $script .= "        });\n\n";
+        $script .= "        await browser.close();\n";
+        $script .= "        browser = null;\n";
+        $script .= "    } catch (error) {\n";
+        $script .= "        if (browser) await browser.close();\n";
+        $script .= "        process.stderr.write(error.message);\n";
+        $script .= "        process.exit(1);\n";
+        $script .= "    }\n";
+        $script .= "})();\n";
 
-(async () => {{
-    let browser;
-    try {{
-        browser = await chromium.launch({{ headless: true }});
-        const context = await browser.newContext({{
-            viewport: {{ width: {$width}, height: {$height} }}
-        }});
-        const page = await context.newPage();
-
-        await page.goto('{$urlJs}', {{
-            waitUntil: 'networkidle',
-            timeout: 30000
-        }});
-
-        await page.screenshot({{
-            path: '{$filePathJs}',
-            fullPage: {$fullPage},
-            type: '{$format}',
-            {$qualityOption}
-        }});
-
-        await browser.close();
-        browser = null;
-    }} catch (error) {{
-        if (browser) await browser.close();
-        process.stderr.write(error.message);
-        process.exit(1);
-    }}
-}})();
-NODESCRIPT;
+        return $script;
     }
 }
