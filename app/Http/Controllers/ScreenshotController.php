@@ -69,9 +69,34 @@ class ScreenshotController extends Controller
             default => 'image/png',
         };
 
-        return response()->file($filePath, [
+        $cleanName = pathinfo($filename, PATHINFO_FILENAME);
+
+        return response(file_get_contents($filePath), 200, [
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'attachment; filename="screenshot-' . $filename . '"',
+            'Content-Length' => filesize($filePath),
+            'Content-Disposition' => 'attachment; filename="snapsite-' . $cleanName . '.' . pathinfo($filename, PATHINFO_EXTENSION) . '"',
+            'Cache-Control' => 'no-cache',
+        ]);
+    }
+
+    public function preview(string $filename): Response|JsonResponse
+    {
+        $filePath = $this->screenshotService->getFilePath($filename);
+
+        if (!$filePath) {
+            abort(404);
+        }
+
+        $mimeType = match (pathinfo($filename, PATHINFO_EXTENSION)) {
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
+
+        return response(file_get_contents($filePath), 200, [
+            'Content-Type' => $mimeType,
+            'Content-Length' => filesize($filePath),
+            'Cache-Control' => 'private, max-age=300',
         ]);
     }
 }
