@@ -16,6 +16,7 @@ class ScreenshotController extends Controller
 
     public function generate(GenerateScreenshotRequest $request): JsonResponse
     {
+        set_time_limit(60);
         $validated = $request->validated();
 
         try {
