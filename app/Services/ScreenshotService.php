@@ -42,7 +42,6 @@ class ScreenshotService
         $filePath = $this->tempDir . DIRECTORY_SEPARATOR . $filename;
 
         try {
-            $chromiumPath = $this->findChromiumPath();
             $nodeScript = $this->buildNodeScript($url, $width, $height, $screenshotType, $format, $filePath);
 
             $tempScript = $this->tempDir . DIRECTORY_SEPARATOR . Str::uuid() . '.js';
@@ -151,66 +150,51 @@ class ScreenshotService
         }
     }
 
-    private function findChromiumPath(): string
-    {
-        $paths = [
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        ];
-
-        foreach ($paths as $path) {
-            if (file_exists($path)) {
-                return $path;
-            }
-        }
-
-        throw new Exception('Chromium browser not found. Please install Google Chrome or run: npx playwright install chromium');
-    }
-
     private function buildNodeScript(string $url, int $width, int $height, string $screenshotType, string $format, string $filePath): string
     {
         $fullPage = $screenshotType === 'full' ? 'true' : 'false';
 
-        $mimeType = match ($format) {
-            'jpeg' => 'image/jpeg',
-            'webp' => 'image/webp',
-            default => 'image/png',
-        };
+        $qualityOption = $format === 'jpeg' ? 'quality: 90,' : '';
+
+        $nodeModulesPath = str_replace('\\', '/', base_path('node_modules'));
 
         $filePath = str_replace('\\', '/', $filePath);
 
-        return <<<NODESCRIPT
-const { chromium } = require('playwright');
+        $urlJs = str_replace("'", "\\'", $url);
+        $filePathJs = str_replace("'", "\\'", $filePath);
 
-(async () => {
+        return <<<NODESCRIPT
+const {{ chromium }} = require('{$nodeModulesPath}/playwright');
+
+(async () => {{
     let browser;
-    try {
-        browser = await chromium.launch({ headless: true });
-        const context = await browser.newContext({
-            viewport: { width: {$width}, height: {$height} }
-        });
+    try {{
+        browser = await chromium.launch({{ headless: true }});
+        const context = await browser.newContext({{
+            viewport: {{ width: {$width}, height: {$height} }}
+        }});
         const page = await context.newPage();
 
-        await page.goto({$this->quoteJs($url)}, {
+        await page.goto('{$urlJs}', {{
             waitUntil: 'networkidle',
             timeout: 30000
-        });
+        }});
 
-        await page.screenshot({
-            path: {$this->quoteJs($filePath)},
+        await page.screenshot({{
+            path: '{$filePathJs}',
             fullPage: {$fullPage},
             type: '{$format}',
-            {$this->qualityOption($format)}
-        });
+            {$qualityOption}
+        }});
 
         await browser.close();
         browser = null;
-    } catch (error) {
+    }} catch (error) {{
         if (browser) await browser.close();
         process.stderr.write(error.message);
         process.exit(1);
-    }
-})();
+    }}
+}})();
 NODESCRIPT;
     }
 
