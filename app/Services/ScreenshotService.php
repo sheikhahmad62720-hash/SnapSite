@@ -17,13 +17,6 @@ class ScreenshotService
         '::1',
     ];
 
-    private array $blockedSchemes = [
-        'file://',
-        'javascript:',
-        'data:',
-        'ftp://',
-    ];
-
     public function __construct()
     {
         $this->tempDir = storage_path('app/temp/screenshots');
@@ -196,20 +189,5 @@ const {{ chromium }} = require('{$nodeModulesPath}/playwright');
     }}
 }})();
 NODESCRIPT;
-    }
-
-    private function quoteJs(string $value): string
-    {
-        $value = str_replace('\\', '/', $value);
-        $value = str_replace("'", "\\'", $value);
-        return "'{$value}'";
-    }
-
-    private function qualityOption(string $format): string
-    {
-        if ($format === 'jpeg') {
-            return 'quality: 90,';
-        }
-        return '';
     }
 }
