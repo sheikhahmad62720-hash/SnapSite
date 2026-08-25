@@ -65,6 +65,7 @@ class ScreenshotService
                 'height' => $height,
                 'format' => $format,
                 'file_size' => $fileSize,
+                'preview_url' => route('screenshot.preview', ['filename' => $filename]),
                 'download_url' => route('screenshot.download', ['filename' => $filename]),
             ];
         } catch (Exception $e) {
